@@ -8,10 +8,10 @@ USAGE: <br>
 dpcmcomp -i <input file path> \[options] <br>
 OPTIONS: <br>
 --help, -h, -? -- Show this help message. <br>
--i <filepath with extension> -- Specifies the input file. (required) <br>
--o <filepath> -- Specifies the output filename. (default = output.wav) <br>
--q <0-15> -- Set the internal sample rate using a sample rate table. (default = 15) <br>
+-i \<filepath with extension> -- Specifies the input file. (required) <br>
+-o \<filepath> -- Specifies the output filename. (default = output.wav) <br>
+-q \<0-15> -- Set the internal sample rate using a sample rate table. (default = 15) <br>
 -p -- Use the PAL sample rate table instead of NTSC. <br>
--sr <sample rate> -- Set the output file's sample rate. <br>
+-sr \<sample rate> -- Set the output file's sample rate. <br>
 -u -- Do not trim the output file. <br>
 -a -- Double the output file's amplitude.
