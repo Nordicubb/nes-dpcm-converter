@@ -14,4 +14,5 @@ OPTIONS: <br>
 -p -- Use the PAL sample rate table instead of NTSC. <br>
 -sr \<sample rate> -- Set the output file's sample rate. (default = 44100) <br>
 -u -- Do not trim the output file. <br>
--a -- Double the output file's amplitude.
+-a -- Double the output file's amplitude. <br>
+-k -- If two consecutive input samples are equal, continue in the same direction instead of reversing.
