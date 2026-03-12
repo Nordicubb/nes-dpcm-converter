@@ -5,14 +5,14 @@ import struct
 import librosa
 import soundfile as sf
 import os
-from pydub import AudioSegment as Am
+import pydub.utils
 import sys
 
 a = 0
 b = 0
 buffer = ""
 current = 0
-quality = 33144
+quality = 0
 outsr = 44100
 ntsc = True
 cut = True
@@ -21,59 +21,67 @@ keep = False
 inname = ""
 outname = "output.wav"
 
-usage = "Nordicub's NES-Style DPCM Converter v1.2.0\nUSAGE:\ndpcmcomp -i <input file path> [options]\nOPTIONS:\n--help, -h, -? -- Show this help message.\n-i <filepath with extension> -- Specifies the input file. (required)\n-o <filepath> -- Specifies the output filename. (default = output.wav)\n-q <0-15> -- Set the internal sample rate using a sample rate table. (default = 15)\n-p -- Use the PAL sample rate table instead of NTSC.\n-sr <sample rate> -- Set the output file's sample rate. (default = 44100)\n-u -- Do not trim the output file.\n-a -- Double the output file's amplitude.\n-k -- If two consecutive input samples are equal, continue in the same direction instead of reversing."
+helptxt = "Nordicub's NES-Style DPCM Converter v1.2.1\nUSAGE:\ndpcmcomp -i <input file path> [options]\nOPTIONS:\n--help, -h, -? -- Show this help message.\n-i <filepath with extension> -- Specifies the input file. (required)\n-o <filepath> -- Specifies the output filename. (default = output.wav)\n-q <0-15> -- Set the internal sample rate using a sample rate table. (default = 15)\n-p -- Use the PAL sample rate table instead of NTSC.\n-sr <sample rate> -- Set the output file's sample rate. (default = 44100)\n-u -- Do not trim the output file.\n-a -- Double the output file's amplitude.\n-k -- If two consecutive input samples are equal, continue in the same direction instead of reversing."
+
+
+def usage():
+    print(helptxt)
+    sys.exit()
+
 
 if len(sys.argv) < 2:
-    print(usage)
-    sys.exit()
+    usage()
 
 del sys.argv[0]
 
 if sys.argv[0] == "-?" or sys.argv[0] == "-h" or sys.argv[0] == "--help":
-    print(usage)
-    sys.exit()
+    usage()
 
 for i, v in enumerate(sys.argv):
     if v == "-i":
         inname = sys.argv[i + 1]
         break
 if inname == "":
-    print(usage)
-    sys.exit()
+    usage()
 
 ntsctab = [4182, 4710, 5264, 5593, 6258, 7046, 7919, 8363, 9420, 11186, 12604, 13983, 16885, 21307, 24858, 33144]
 paltab = [4177, 4697, 5261, 5579, 6024, 7045, 7917, 8397, 9447, 11234, 12596, 14090, 16965, 21316, 25191, 33252]
 
-for i, v in enumerate(sys.argv):
-    if v == "-o":
-        if sys.argv[i + 1].lower().endswith(".wav"):
-            outname = sys.argv[i + 1]
-        else:
-            outname = sys.argv[i + 1] + ".wav"
-        i += 2
-    elif v == "-p":
-        ntsc = False
-        i += 1
-    elif v == "-u":
-        cut = False
-        i += 1
-    elif v == "-a":
-        amp = True
-        i += 1
-    elif v == "-k":
-        keep = True
-        i += 1
-    elif v == "-sr":
-        outsr = int(sys.argv[i + 1])
-        i += 2
-
-for i, v in enumerate(sys.argv):
-    if v == "-q":
-        if ntsc:
-            quality = ntsctab[int(sys.argv[i + 1])]
-        else:
-            quality = paltab[int(sys.argv[i + 1])]
-        break
+try:
+    for i, v in enumerate(sys.argv):
+        if v == "-o":
+            if sys.argv[i + 1].lower().endswith(".wav"):
+                outname = sys.argv[i + 1]
+            else:
+                outname = sys.argv[i + 1] + ".wav"
+            i += 2
+        elif v == "-p":
+            ntsc = False
+            i += 1
+        elif v == "-u":
+            cut = False
+            i += 1
+        elif v == "-a":
+            amp = True
+            i += 1
+        elif v == "-k":
+            keep = True
+            i += 1
+        elif v == "-sr":
+            outsr = int(sys.argv[i + 1])
+            i += 2
+except Exception:
+    usage()
+try:
+    for i, v in enumerate(sys.argv):
+        if v == "-q":
+            if ntsc:
+                quality = ntsctab[int(sys.argv[i + 1])]
+            else:
+                quality = paltab[int(sys.argv[i + 1])]
+            break
+except Exception:
+    usage()
 if quality == 0:
     if ntsc:
         quality = ntsctab[15]
@@ -86,7 +94,7 @@ if os.path.isfile(outname):
         sys.exit()
 
 try:
-    file = Am.from_file(inname)
+    file = pydub.AudioSegment.from_file(inname)
     print("Converting to mono...")
     monofile = file.set_channels(1)
     monofile.export("tempwavdpcmcomp.wav", format="wav")
@@ -106,24 +114,50 @@ except PermissionError:
     print("ERROR: Insufficient permissions to create/remove files.")
     sys.exit()
 except TypeError as e:
-    print(usage)
-    sys.exit()
+    usage()
 except Exception:
-    print(usage)
-    sys.exit()
+    usage()
 
 try:
     with wav.open("tempsrdpcmcomp.wav", "r") as wavff:
-        for i, o in enumerate(arr.array("h", wavff.readframes(wavff.getnframes()))):
+        info = pydub.utils.mediainfo_json("tempsrdpcmcomp.wav")
+        audio_streams = [x for x in info["streams"] if x["codec_type"] == "audio"]
+        isfloat = audio_streams[0].get("sample_fmt")
+        step = 1
+        if wavff.getsampwidth() == 1:
+            typecode = "B"
+        elif wavff.getsampwidth() == 2:
+            typecode = "h"
+        elif wavff.getsampwidth() == 3:
+            typecode = "B"
+            step = 3
+        elif wavff.getsampwidth() == 4:
+            if isfloat == "flt":
+                typecode = "f"
+            else:
+                typecode = "l"
+        elif wavff.getsampwidth() == 8:
+            typecode = "d"
+        frames = arr.array(typecode, wavff.readframes(wavff.getnframes()))
+        for i in range(0, len(frames), step):
             print("Building output file... " + str(math.floor(len(buffer) / wavff.getnframes() * 100)) + "%", end="\r")
+            o = frames[i]
+            print(o)
             if wavff.getsampwidth() == 1:
-                v = math.floor((o / 2)/2)
+                v = math.floor(o / 2)
             elif wavff.getsampwidth() == 2:
-                v = math.floor((o / 2 ** 9 + 64)/2)
+                v = math.floor((o / 2 ** 9 + 64))
             elif wavff.getsampwidth() == 3:
-                v = math.floor((o / 2 ** 17 + 64)/2)
+                o = (o << 8 | frames[i + 1]) << 8 | frames[i + 2]
+                v = math.floor((o / 2 ** 17 + 64))
             elif wavff.getsampwidth() == 4:
-                v = math.floor((o / 2 ** 26 + 64)/2)
+                if isfloat != "flt":
+                    v = math.floor((o / 2 ** 26 + 64))
+                else:
+                    v = math.floor(o / ((max(frames) - min(frames)) / 127))
+            elif wavff.getsampwidth() == 8:
+                v = math.floor(o / ((max(frames) - min(frames)) / 127))
+            print(v)
             if i == 0:
                 a = v
                 b = v
@@ -148,8 +182,7 @@ except PermissionError:
     print("ERROR: Unable to read file.")
     sys.exit()
 except Exception:
-    print(usage)
-    sys.exit()
+    usage()
 try:
     print("Output file built successfully.")
     print("Removing temp resampled file...")
@@ -162,8 +195,7 @@ except PermissionError:
     print("ERROR: Insufficient permissions to delete files.")
     sys.exit()
 except Exception:
-    print(usage)
-    sys.exit()
+    usage()
 
 if cut:
     print("Cutting builded file...")
@@ -218,5 +250,4 @@ except PermissionError:
     print(f"ERROR: Insufficient permissions to create files.")
     sys.exit()
 except Exception:
-    print(usage)
-    sys.exit()
+    usage()
