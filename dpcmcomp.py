@@ -21,7 +21,7 @@ keep = False
 inname = ""
 outname = "output.wav"
 
-helptxt = "Nordicub's NES-Style DPCM Converter v1.2.1\nUSAGE:\ndpcmcomp -i <input file path> [options]\nOPTIONS:\n--help, -h, -? -- Show this help message.\n-i <filepath with extension> -- Specifies the input file. (required)\n-o <filepath> -- Specifies the output filename. (default = output.wav)\n-q <0-15> -- Set the internal sample rate using a sample rate table. (default = 15)\n-p -- Use the PAL sample rate table instead of NTSC.\n-sr <sample rate> -- Set the output file's sample rate. (default = 44100)\n-u -- Do not trim the output file.\n-a -- Double the output file's amplitude.\n-k -- If two consecutive input samples are equal, continue in the same direction instead of reversing."
+helptxt = "Nordicub's NES-Style DPCM Converter v1.3.0\nUSAGE:\ndpcmcomp -i <input file path> [options]\nOPTIONS:\n--help, -h, -? -- Show this help message.\n-i <filepath with extension> -- Specifies the input file. (required)\n-o <filepath> -- Specifies the output filename. (default = output.wav)\n-q <0-15> -- Set the internal sample rate using a sample rate table. (default = 15)\n-p -- Use the PAL sample rate table instead of NTSC.\n-sr <sample rate or \"off\"> -- Set the output file's sample rate. If the argument is \"off\" or 0, set to the internal sample rate. (default = 44100)\n-u -- Do not trim the output file.\n-a -- Double the output file's amplitude.\n-k -- If two consecutive input samples are equal, continue in the same direction instead of reversing."
 
 
 def usage():
@@ -68,7 +68,10 @@ try:
             keep = True
             i += 1
         elif v == "-sr":
-            outsr = int(sys.argv[i + 1])
+            if sys.argv[i + 1].lower() == "off":
+                outsr = 0
+            else:
+                outsr = int(sys.argv[i + 1])
             i += 2
 except Exception:
     usage()
@@ -87,6 +90,8 @@ if quality == 0:
         quality = ntsctab[15]
     else:
         quality = paltab[15]
+if outsr == 0:
+    outsr = quality
 
 if os.path.isfile(outname):
     exists = input(f"File named {outname} already exists. Continue? (y/n) ")
